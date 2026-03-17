@@ -47,3 +47,4 @@
 !.vscode/tasks.json
 !.vscode/extensions.json
 
+.aider*
