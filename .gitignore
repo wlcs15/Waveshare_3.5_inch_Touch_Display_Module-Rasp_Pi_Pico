@@ -39,3 +39,11 @@
 
 # debug information files
 *.dwo
+
+# Ignore specific VSCode files and directories
+.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
