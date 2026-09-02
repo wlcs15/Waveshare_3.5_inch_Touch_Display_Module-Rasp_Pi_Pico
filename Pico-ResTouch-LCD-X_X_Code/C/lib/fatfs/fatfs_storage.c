@@ -35,6 +35,7 @@
 #include "LCD_Driver.h"
 #include "LCD_GUI.h"
 #include <string.h>
+#include <stdio.h>
 
 
 
@@ -119,44 +120,59 @@ uint32_t Storage_OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
     
     uint32_t index = 0, size = 0, width = 0, height = 0;
     uint32_t bmpaddress, bit_pixel = 0;
-    FIL file1; 
+    FIL file1;
+    FRESULT fr;
+    UINT header_got = 0;
 
-    f_open(&file1, BmpName, FA_READ);	
-    f_read(&file1, aBuffer, 30, &BytesRead);
+    printf("Storage_OpenReadFile: opening \"%s\"\r\n", BmpName ? BmpName : "(null)");
+    fr = f_open(&file1, BmpName, FA_READ);
+    if (fr != FR_OK) {
+        printf("Storage_OpenReadFile: f_open failed %d\r\n", fr);
+        return 0;
+    }
+    fr = f_read(&file1, aBuffer, 30, &BytesRead);
+    header_got = BytesRead;
+    printf("Storage_OpenReadFile: f_read header rc=%d bytes=%u\r\n", fr, (unsigned)BytesRead);
+    if (fr != FR_OK || BytesRead < 30) {
+        printf("Storage_OpenReadFile: header read incomplete\r\n");
+        f_close(&file1);
+        return 0;
+    }
 
 	bmpaddress = (uint32_t)aBuffer;
 
 	/* Read bitmap size */
 	size = *(uint16_t *) (bmpaddress + 2);
 	size |= (*(uint16_t *) (bmpaddress + 4)) << 16;
-//	printf("file size =  %d \r\n",size);
 	/* Get bitmap data address offset */
 	index = *(uint16_t *) (bmpaddress + 10);
 	index |= (*(uint16_t *) (bmpaddress + 12)) << 16;
-	// printf("file index =  %d \r\n",index);
 	/* Read bitmap width */
 	width = *(uint16_t *) (bmpaddress + 18);
 	width |= (*(uint16_t *) (bmpaddress + 20)) << 16;
-	// printf("file width =  %d \r\n",width);
 	/* Read bitmap height */
 	height = *(uint16_t *) (bmpaddress + 22);
 	height |= (*(uint16_t *) (bmpaddress + 24)) << 16;
-	// printf("file height =  %d \r\n",height);
 	/* Read bit/pixel */
-	bit_pixel = *(uint16_t *) (bmpaddress + 28);  
-//	printf("bit_pixel = %d \r\n",bit_pixel);
+	bit_pixel = *(uint16_t *) (bmpaddress + 28);
+	printf("Storage_OpenReadFile: magic=%c%c size=%lu pixel_off=%lu %lux%lu bpp=%lu header_bytes=%u\r\n",
+	       (aBuffer[0] >= 32 ? aBuffer[0] : '?'),
+	       (aBuffer[1] >= 32 ? aBuffer[1] : '?'),
+	       (unsigned long)size, (unsigned long)index,
+	       (unsigned long)width, (unsigned long)height,
+	       (unsigned long)bit_pixel, (unsigned)header_got);
 	f_close (&file1);
 
     if (24 != bit_pixel) {
+        printf("Storage_OpenReadFile: skip (need 24 bpp, got %lu)\r\n",
+               (unsigned long)bit_pixel);
         return 0;
     }
 
 	if (width != sLCD_DIS.LCD_Dis_Column || height != sLCD_DIS.LCD_Dis_Page) {
-		// printf("width != sLCD_DIS.LCD_Dis_Column \r\n");
-		// printf("file width =  %d \r\n",width);
-		// printf("file height =  %d \r\n",height);
-		// printf("sLCD_DIS.LCD_Dis_Column =  %d \r\n",sLCD_DIS.LCD_Dis_Column);
-		// printf("sLCD_DIS.LCD_Dis_Page =  %d \r\n",sLCD_DIS.LCD_Dis_Page);
+		printf("Storage_OpenReadFile: skip size mismatch file=%lux%lu display=%ux%u\r\n",
+		       (unsigned long)width, (unsigned long)height,
+		       (unsigned)sLCD_DIS.LCD_Dis_Column, (unsigned)sLCD_DIS.LCD_Dis_Page);
 		return 1;
 	}
 	
@@ -227,6 +243,7 @@ uint32_t Storage_OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
     }
     f_close(&file1);
     spi_set_baudrate(SPI_PORT,3000*1000);
+	printf("Storage_OpenReadFile: displayed \"%s\", hold 1500 ms\r\n", BmpName);
 	Driver_Delay_ms(1500);
     return 1;
 }
@@ -273,8 +290,15 @@ uint32_t Storage_CopyFile(const char* BmpName1, const char* BmpName2)
 uint32_t Storage_CheckBitmapFile(const char* BmpName, uint32_t *FileLen)
 {
     uint32_t err = 0;
-    if(f_open(&MyFile, BmpName, FA_READ) != FR_OK){
+    FRESULT fr;
+    fr = f_open(&MyFile, BmpName, FA_READ);
+    printf("Storage_CheckBitmapFile: f_open(\"%s\") -> %d\r\n",
+           BmpName ? BmpName : "(null)", fr);
+    if(fr != FR_OK){
         err = 2;
+    } else if (FileLen) {
+        *FileLen = (uint32_t)f_size(&MyFile);
+        printf("Storage_CheckBitmapFile: size=%lu\r\n", (unsigned long)*FileLen);
     }
    f_close(&MyFile); 
   return err;
@@ -292,26 +316,50 @@ uint32_t Storage_GetDirectoryBitmapFiles(const char* DirName, char* Files[])
 	FRESULT res;
 
 	res = f_opendir(&MyDirectory, DirName);
+	printf("Storage_GetDirectoryBitmapFiles: f_opendir(\"%s\") -> %d\r\n",
+	       DirName ? DirName : "(null)", res);
 	if(res == FR_OK){
 		i = strlen(DirName);
 		for (;;){
 			res = f_readdir(&MyDirectory, &MyFileInfo);
-			if(res != FR_OK || MyFileInfo.fname[0] == 0) break;
+			if(res != FR_OK) {
+				printf("Storage_GetDirectoryBitmapFiles: f_readdir -> %d\r\n", res);
+				break;
+			}
+			if(MyFileInfo.fname[0] == 0) break;
 			if(MyFileInfo.fname[0] == '.') continue;
 			if(!(MyFileInfo.fattrib & AM_DIR)){
-				do{
-					i++;
-				}while (MyFileInfo.fname[i] != 0x2E);
+				char *dot = strrchr(MyFileInfo.fname, '.');
+				printf("Storage_GetDirectoryBitmapFiles: file \"%s\"", MyFileInfo.fname);
+				if (!dot) {
+					printf(" (no extension, skip)\r\n");
+					i = 0;
+					continue;
+				}
+				printf(" ext=\"%s\"", dot);
+				i = (uint32_t)(dot - MyFileInfo.fname);
 				if(j < MAX_BMP_FILES){
 					if((MyFileInfo.fname[i + 1] == 'B') && (MyFileInfo.fname[i + 2] == 'M') && (MyFileInfo.fname[i + 3] == 'P')){	
 						sprintf(Files[j], "%-11.11s", MyFileInfo.fname);
+						printf(" MATCH slot=%lu padded=\"%-11.11s\"\r\n",
+						       (unsigned long)j, MyFileInfo.fname);
 						j++;
+					} else {
+						printf(" skip (need uppercase BMP)\r\n");
 					}
+				} else {
+					printf(" skip (MAX_BMP_FILES)\r\n");
 				}
 				i = 0;
+			} else {
+				printf("Storage_GetDirectoryBitmapFiles: dir \"%s\" skip\r\n",
+				       MyFileInfo.fname);
 			}
 		}
+		f_closedir(&MyDirectory);
 	}
+	printf("Storage_GetDirectoryBitmapFiles: matched %lu BMP file(s)\r\n",
+	       (unsigned long)j);
 	return j;
 }
 

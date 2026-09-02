@@ -61,6 +61,9 @@ note:
 uint8_t System_Init(void)
 {
 	stdio_init_all();
+	/* USB CDC needs a moment after reset or early printf is lost. */
+	sleep_ms(2500);
+	printf("System_Init: USB stdio ready\r\n");
 	DEV_GPIO_Init();
 	spi_init(SPI_PORT,4000000);
 	gpio_set_function(LCD_CLK_PIN,GPIO_FUNC_SPI);
