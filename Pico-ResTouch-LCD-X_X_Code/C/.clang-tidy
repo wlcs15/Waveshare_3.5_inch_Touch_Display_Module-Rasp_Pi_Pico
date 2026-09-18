@@ -1,0 +1,6 @@
+---
+# Host gate for lib/quality + tests. Pico/newlib has no memset_s.
+Checks: 'clang-diagnostic-*,clang-analyzer-*,google-*,cert-*,-google-readability-todo'
+WarningsAsErrors: 'clang-diagnostic-error,clang-analyzer-*'
+HeaderFilterRegex: 'lib/quality|tests/'
+FormatStyle: none

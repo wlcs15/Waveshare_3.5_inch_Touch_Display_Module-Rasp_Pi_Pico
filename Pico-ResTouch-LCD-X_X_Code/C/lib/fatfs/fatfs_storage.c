@@ -34,6 +34,7 @@
 
 #include "LCD_Driver.h"
 #include "LCD_GUI.h"
+#include "bmp_policy.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -119,7 +120,7 @@ uint32_t Storage_OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
     uint16_t i, j, k, h;
     
     uint32_t index = 0, size = 0, width = 0, height = 0;
-    uint32_t bmpaddress, bit_pixel = 0;
+    uint32_t bit_pixel = 0;
     FIL file1;
     FRESULT fr;
     UINT header_got = 0;
@@ -139,41 +140,37 @@ uint32_t Storage_OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
         return 0;
     }
 
-	bmpaddress = (uint32_t)aBuffer;
-
-	/* Read bitmap size */
-	size = *(uint16_t *) (bmpaddress + 2);
-	size |= (*(uint16_t *) (bmpaddress + 4)) << 16;
-	/* Get bitmap data address offset */
-	index = *(uint16_t *) (bmpaddress + 10);
-	index |= (*(uint16_t *) (bmpaddress + 12)) << 16;
-	/* Read bitmap width */
-	width = *(uint16_t *) (bmpaddress + 18);
-	width |= (*(uint16_t *) (bmpaddress + 20)) << 16;
-	/* Read bitmap height */
-	height = *(uint16_t *) (bmpaddress + 22);
-	height |= (*(uint16_t *) (bmpaddress + 24)) << 16;
-	/* Read bit/pixel */
-	bit_pixel = *(uint16_t *) (bmpaddress + 28);
-	printf("Storage_OpenReadFile: magic=%c%c size=%lu pixel_off=%lu %lux%lu bpp=%lu header_bytes=%u\r\n",
-	       (aBuffer[0] >= 32 ? aBuffer[0] : '?'),
-	       (aBuffer[1] >= 32 ? aBuffer[1] : '?'),
-	       (unsigned long)size, (unsigned long)index,
-	       (unsigned long)width, (unsigned long)height,
-	       (unsigned long)bit_pixel, (unsigned)header_got);
-	f_close (&file1);
-
-    if (24 != bit_pixel) {
-        printf("Storage_OpenReadFile: skip (need 24 bpp, got %lu)\r\n",
-               (unsigned long)bit_pixel);
-        return 0;
-    }
-
-	if (width != sLCD_DIS.LCD_Dis_Column || height != sLCD_DIS.LCD_Dis_Page) {
-		printf("Storage_OpenReadFile: skip size mismatch file=%lux%lu display=%ux%u\r\n",
+	{
+		bmp_header_info_t hdr;
+		if (bmp_policy_parse_header(aBuffer, header_got, &hdr) != 0) {
+			printf("Storage_OpenReadFile: header parse failed\r\n");
+			f_close(&file1);
+			return 0;
+		}
+		size = hdr.file_size;
+		index = hdr.pixel_offset;
+		width = hdr.width;
+		height = hdr.height;
+		bit_pixel = hdr.bit_pixel;
+		printf("Storage_OpenReadFile: magic=%c%c size=%lu pixel_off=%lu %lux%lu bpp=%lu header_bytes=%u\r\n",
+		       hdr.is_bm ? 'B' : '?',
+		       hdr.is_bm ? 'M' : '?',
+		       (unsigned long)size, (unsigned long)index,
 		       (unsigned long)width, (unsigned long)height,
-		       (unsigned)sLCD_DIS.LCD_Dis_Column, (unsigned)sLCD_DIS.LCD_Dis_Page);
-		return 1;
+		       (unsigned long)bit_pixel, (unsigned)header_got);
+		f_close (&file1);
+
+		if (!bmp_policy_can_show(&hdr, sLCD_DIS.LCD_Dis_Column, sLCD_DIS.LCD_Dis_Page)) {
+			if (bit_pixel != BMP_POLICY_NEED_BPP) {
+				printf("Storage_OpenReadFile: skip (need 24 bpp, got %lu)\r\n",
+				       (unsigned long)bit_pixel);
+				return 0;
+			}
+			printf("Storage_OpenReadFile: skip size mismatch file=%lux%lu display=%ux%u\r\n",
+			       (unsigned long)width, (unsigned long)height,
+			       (unsigned)sLCD_DIS.LCD_Dis_Column, (unsigned)sLCD_DIS.LCD_Dis_Page);
+			return 1;
+		}
 	}
 	
     /* Synchronize f_read right in front of the image data */

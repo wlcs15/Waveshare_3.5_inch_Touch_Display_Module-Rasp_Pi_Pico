@@ -51,3 +51,12 @@
 !.vscode/extensions.json
 
 .aider*
+
+# Quality / host-test artifacts (Pico C tree)
+Pico-ResTouch-LCD-X_X_Code/C/local/
+Pico-ResTouch-LCD-X_X_Code/C/build/
+Pico-ResTouch-LCD-X_X_Code/C/build.sav/
+*.profraw
+*.profdata
+*.gcda
+*.gcno

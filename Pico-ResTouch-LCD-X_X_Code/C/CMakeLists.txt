@@ -21,6 +21,7 @@ pico_sdk_init()
 
 # Add compilation subdirectory
 add_subdirectory(lib/config)
+add_subdirectory(lib/quality)
 add_subdirectory(lib/lcd)
 add_subdirectory(lib/font)
 add_subdirectory(examples)
@@ -34,6 +35,7 @@ include_directories(./lib/lcd)
 include_directories(./lib/font)
 include_directories(./lib/fatfs)
 include_directories(./lib/sdcard)
+include_directories(./lib/quality)
 
 # Generate executable file
 add_executable(main 
@@ -47,7 +49,7 @@ pico_enable_stdio_uart(main 0)
 # create map/bin/hex/uf2 file etc.
 pico_add_extra_outputs(main)
 
-target_link_libraries(main examples lcd font config pico_stdlib hardware_spi fatfs)
+target_link_libraries(main examples lcd font config pico_stdlib hardware_spi fatfs quality)
 #
 # Grok - CLS - Added the line since the command line gdb did not work as expected
 #

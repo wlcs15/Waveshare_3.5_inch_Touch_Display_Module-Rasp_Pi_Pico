@@ -1,0 +1,39 @@
+Pico-ResTouch-LCD-3.5 / Pico W — tools for build and quality
+============================================================
+Migrated from LCC A5.01 (host tests, lizard, coverage) and A5.02
+(check_tools, Unity+Clang llvm-cov, cppcheck, oclint, clang-tidy).
+Arduino-cli, Wi-Fi wrap, and Mega cores are not used here.
+
+Required
+  git, python3, cmake 3.12+, ninja or make
+  clang / clang++          host Unity + coverage
+  Pico SDK 2.2             PICO_SDK_PATH or ~/.pico-sdk/sdk/2.2.0
+  arm-none-eabi-gcc        Pico toolchain 14_2_Rel1
+  picotool                 flash UF2
+  third_party/Unity/src    vendored Unity 2.7.1 (ThrowTheSwitch MIT)
+
+Optional
+  llvm-cov, llvm-profdata  scripts/run_coverage.sh (host)
+  lizard                   scripts/run_lizard.sh (CCN fail > 10)
+  clang-tidy               scripts/run_clang_tidy.sh
+  cppcheck                 scripts/run_cppcheck.sh
+  oclint                   scripts/run_oclint.sh (Linux)
+  openocd                  Debug Probe reset
+
+Each quality script has scripts/<name>.sh (Ubuntu) and scripts/<name>.ps1 (Windows 11).
+Python cores work on both. OCLint is skipped on Windows.
+
+Ubuntu (from Pico-ResTouch-LCD-X_X_Code/C):
+  bash scripts/check_tools.sh
+  bash scripts/run_lizard.sh
+  bash scripts/run_tests.sh
+  bash scripts/run_coverage.sh
+  bash scripts/run_clang_tidy.sh
+  bash scripts/run_on_target_tests.sh   # flashes Unity; reflash build/main.uf2 after
+
+Windows 11:
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check_tools.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_tests.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_coverage.ps1
+
+See the repo README.md for the full table.
