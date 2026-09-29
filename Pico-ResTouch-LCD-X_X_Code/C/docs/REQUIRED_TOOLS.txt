@@ -11,6 +11,8 @@ Required
   arm-none-eabi-gcc        Pico toolchain 14_2_Rel1
   picotool                 flash UF2
   third_party/Unity/src    vendored Unity 2.7.1 (ThrowTheSwitch MIT)
+  qemu-system-arm          on-target ARM system QEMU (CI smoke)
+  renode                   Renode RP2040 / Pico W smoke (CI)
 
 Optional
   llvm-cov, llvm-profdata  scripts/run_coverage.sh (host)
@@ -19,6 +21,11 @@ Optional
   cppcheck                 scripts/run_cppcheck.sh
   oclint                   scripts/run_oclint.sh (Linux)
   openocd                  Debug Probe reset
+  qemu-system-aarch64      companion softmmu (report only; not required for Pico M0)
+
+Emulators: prefer /workspace/tools/bin on PATH when present
+(source /workspace/env/emulators.sh on the bot box). System installs are accepted.
+Do not require Espressif QEMU or simavr here (other CI bots).
 
 Each quality script has scripts/<name>.sh (Ubuntu) and scripts/<name>.ps1 (Windows 11).
 Python cores work on both. OCLint is skipped on Windows.

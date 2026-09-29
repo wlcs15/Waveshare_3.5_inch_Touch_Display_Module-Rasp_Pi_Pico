@@ -3,6 +3,10 @@
 $ErrorActionPreference = "Continue"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $Root
+$wsBin = "/workspace/tools/bin"
+if (Test-Path -LiteralPath $wsBin) {
+    $env:PATH = "$wsBin" + [IO.Path]::PathSeparator + $env:PATH
+}
 
 if (-not $env:CHECK_TOOLS_INNER) {
     $localDir = Join-Path $Root "local"
@@ -85,6 +89,23 @@ if ($py) {
     & $py.Source -u (Join-Path $Root "scripts\run_lizard.py") --check 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) { Write-Ok lizard "pipx install lizard" } else { Write-Warn lizard "pipx install lizard" }
 }
+
+Write-Host ""
+Write-Host "=== On-target emulators (required) ==="
+Write-Host "  (skip Espressif QEMU / simavr — other CI bots)"
+function Resolve-Emu($n) {
+    $g = Get-Command $n -ErrorAction SilentlyContinue
+    if ($g) { return $g.Source }
+    $c = Join-Path "/workspace/tools/bin" $n
+    if (Test-Path -LiteralPath $c) { return $c }
+    return $null
+}
+$qa = Resolve-Emu "qemu-system-arm"
+if ($qa) { Write-Ok "qemu-system-arm" $qa } else { Write-Fail "qemu-system-arm" "install qemu-system-arm (or /workspace/tools/bin)" }
+$rn = Resolve-Emu "renode"
+if ($rn) { Write-Ok "renode" $rn } else { Write-Fail "renode" "install Renode (or /workspace/tools/bin)" }
+$q64 = Resolve-Emu "qemu-system-aarch64"
+if ($q64) { Write-Ok "qemu-system-aarch64" "$q64 (optional)" } else { Write-Warn "qemu-system-aarch64" "optional companion softmmu" }
 
 Write-Host ""
 if ($script:MissingReq -ne 0) {
