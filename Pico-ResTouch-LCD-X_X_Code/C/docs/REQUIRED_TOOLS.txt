@@ -37,10 +37,12 @@ Ubuntu (from Pico-ResTouch-LCD-X_X_Code/C):
   bash scripts/run_coverage.sh
   bash scripts/run_clang_tidy.sh
   bash scripts/run_on_target_tests.sh   # flashes Unity; reflash build/main.uf2 after
+  bash scripts/run_emulator_tests.sh    # Renode RP2040 smoke of on_target ELF (no flash)
 
 Windows 11:
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check_tools.ps1
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_tests.ps1
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_coverage.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_emulator_tests.ps1
 
 See the repo README.md for the full table.
