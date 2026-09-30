@@ -76,7 +76,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check_tools.ps1
 | `run_coverage_target` | On-device GCC `--coverage` (`.gcno` only; Pico has no FS for `.gcda`) plus the host llvm-cov report of the same TUs. |
 | `run_on_target_tests` | Builds `tests/on_target`, flashes `on_target_tests.uf2`, reads Unity over USB CDC. **Replaces the LCD demo** until you reflash `build/main.uf2`. |
 | `run_lizard` | Cyclomatic complexity. Fails if any function in `lib/quality`, `tests`, or `host` has **CCN > 10**. Vendor LCD/FatFs is not scanned. |
-| `run_clang_tidy` | Host clang-tidy fail gate on `bmp_policy.c` and `test_bmp_policy.c`. |
+| `run_clang_tidy` | Host clang-tidy on `lib/quality` + `tests` only (not `lib/lcd`, `lib/fatfs`, `lib/font`). |
 | `run_cppcheck` | cppcheck C11 errors fail; style/performance are reports. |
 | `run_oclint` | OCLint on our C sources. **Skipped on Windows** (same as A5.02). |
 
@@ -84,22 +84,8 @@ Tool versions and install hints: `Pico-ResTouch-LCD-X_X_Code/C/docs/REQUIRED_TOO
 
 Host tests need **LLVM Clang**, not MinGW. Coverage needs `llvm-cov` and `llvm-profdata` on `PATH` (`C:\Program Files\LLVM\bin` on Windows).
 
-## Clang-tidy results and recommended changes
+## Clang-tidy
 
-`scripts/run_clang_tidy` was run against `lib/quality` and `tests`. The only **fail-gate** hits were:
+`scripts/run_clang_tidy` checks **`lib/quality`** and **`tests` only**. Vendor **`lib/lcd`**, **`lib/fatfs`**, and **`lib/font`** are not on the file list and are outside `HeaderFilterRegex`.
 
-| Location | Check | What it wants |
-|---|---|---|
-| `bmp_policy.c` `memset(out, …)` and `memset(out11, …)` | `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling` | C11 `memset_s` |
-| `test_bmp_policy.c` two `memset(hdr, 0, …)` | same | same |
-
-**Done:** those four call sites now use `memset_s` (`smax` + `n`). glibc and Pico newlib do not ship Annex K, so `lib/quality/string_s.c` provides `memset_s` (bounds-checked fill, no libc `memset`). The tidy check stays **on**.
-
-Further tidy/style items (not fail-gate today; optional later):
-
-1. **`bmp_policy_is_bmp_ext`** — the `for (i = 0; name + i < dot; i++)` loop cannot see a NUL before `.` because `strrchr` already found the dot. Delete the loop; it adds CCN without safety.
-2. **`bmp_policy_pad_8_3`** — take `size_t out_len` and refuse `out_len < 12` so the 11-space + NUL contract is explicit (helps both tidy and the 8.3 FatFs pad).
-3. **`google-*` / `cert-*` on C** — hundreds of noise warnings from Unity and C11 vs Google C++ style. Keep them out of `WarningsAsErrors` (already). Do not enable `google-runtime-int` on this C code.
-4. **Vendor** `lib/lcd`, `lib/fatfs`, `lib/font` — do not run clang-tidy as a gate; CCN and analyzer volume is Waveshare/ST, not ours.
-
-After the `.clang-tidy` suppression, the intended gate is: **no clang-diagnostic-error and no other clang-analyzer findings** on `lib/quality` + `tests`.
+Checks are `clang-diagnostic-*` and `clang-analyzer-*` only (no `google-*` / `cert-*`). Call sites use `memset_s` from `lib/quality/string_s.c`. `bmp_policy_pad_8_3` takes `out_len` and requires at least 12 bytes.
