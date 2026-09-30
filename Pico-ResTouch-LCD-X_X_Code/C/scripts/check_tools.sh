@@ -5,6 +5,10 @@ set -u
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
+# Prefer workspace Debian/Renode wrappers when present (GrokBot-CI-ARM).
+if [[ -d /workspace/tools/bin ]]; then
+  export PATH="/workspace/tools/bin:${PATH}"
+fi
 
 if [[ -z "${CHECK_TOOLS_INNER:-}" ]]; then
     mkdir -p "$root/local"
@@ -177,6 +181,44 @@ if have_cmd openocd; then
   ok openocd "$(openocd --version 2>&1 | head -n1)"
 else
   warn openocd "Debug Probe reset / SWD (apt install openocd)"
+fi
+
+echo ""
+echo "=== On-target emulators (required) ==="
+echo "  (skip Espressif QEMU / simavr — other CI bots)"
+
+emu_resolve() {
+  local name="$1"
+  if have_cmd "$name"; then
+    command -v "$name"
+    return 0
+  fi
+  if [[ -x "/workspace/tools/bin/$name" ]]; then
+    echo "/workspace/tools/bin/$name"
+    return 0
+  fi
+  return 1
+}
+
+qemu_arm=""
+if qemu_arm=$(emu_resolve qemu-system-arm); then
+  ok qemu-system-arm "$(qemu-system-arm --version 2>/dev/null | head -n1) ($qemu_arm)"
+else
+  fail qemu-system-arm "install qemu-system-arm (or put /workspace/tools/bin on PATH)"
+fi
+
+renode_bin=""
+if renode_bin=$(emu_resolve renode); then
+  ok renode "$(renode --version 2>/dev/null | head -n1) ($renode_bin)"
+else
+  fail renode "install Renode (or put /workspace/tools/bin on PATH)"
+fi
+
+qemu_a64=""
+if qemu_a64=$(emu_resolve qemu-system-aarch64); then
+  ok qemu-system-aarch64 "$(qemu-system-aarch64 --version 2>/dev/null | head -n1) ($qemu_a64) (optional)"
+else
+  warn qemu-system-aarch64 "optional companion softmmu; not required for Pico M0"
 fi
 
 echo ""
