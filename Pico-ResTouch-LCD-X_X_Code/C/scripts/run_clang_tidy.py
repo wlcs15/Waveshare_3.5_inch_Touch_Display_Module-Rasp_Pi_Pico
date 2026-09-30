@@ -11,10 +11,13 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 WAE = "clang-diagnostic-error,clang-analyzer-*"
 CONFIG = os.path.join(ROOT, ".clang-tidy")
 COMPILE_DB = os.path.join(ROOT, "build", "host")
+# Never pass lib/lcd, lib/fatfs, or lib/font (vendor Waveshare/ST).
 SOURCES = [
     os.path.join(ROOT, "lib", "quality", "bmp_policy.c"),
+    os.path.join(ROOT, "lib", "quality", "string_s.c"),
     os.path.join(ROOT, "tests", "test_bmp_policy.c"),
 ]
+HEADER_FILTER = "lib/quality/|tests/"
 
 
 def find_clang_tidy():
@@ -54,13 +57,14 @@ def main():
         tidy,
         "--config-file=" + CONFIG,
         "--warnings-as-errors=" + WAE,
+        "--header-filter=" + HEADER_FILTER,
         "-p",
         COMPILE_DB,
     ] + SOURCES
     rc = subprocess.call(cmd)
     if rc != 0:
         return rc
-    print("OK: clang-tidy host gate (lib/quality + tests/; no vendor LCD)")
+    print("OK: clang-tidy host gate (lib/quality + tests/; excluded lcd, fatfs, font)")
     return 0
 
 

@@ -89,10 +89,12 @@ void test_bmp_ext_and_pad(void)
     TEST_ASSERT_EQUAL_INT(0, bmp_policy_is_bmp_ext("IMAGE2.bmp"));
     TEST_ASSERT_EQUAL_INT(0, bmp_policy_is_bmp_ext("IMAGES"));
     TEST_ASSERT_EQUAL_INT(0, bmp_policy_is_bmp_ext(NULL));
-    bmp_policy_pad_8_3("IMAGE2.BMP", pad);
+    TEST_ASSERT_EQUAL_INT(0, bmp_policy_pad_8_3("IMAGE2.BMP", pad, sizeof pad));
     TEST_ASSERT_EQUAL_STRING("IMAGE2.BMP ", pad);
-    bmp_policy_pad_8_3("IMAGE.BMP", pad);
+    TEST_ASSERT_EQUAL_INT(0, bmp_policy_pad_8_3("IMAGE.BMP", pad, sizeof pad));
     TEST_ASSERT_EQUAL_STRING("IMAGE.BMP  ", pad);
+    TEST_ASSERT_EQUAL_INT(-1, bmp_policy_pad_8_3("IMAGE.BMP", pad, 11));
+    TEST_ASSERT_EQUAL_INT(-1, bmp_policy_pad_8_3("IMAGE.BMP", NULL, 12));
 }
 
 int run_bmp_policy_tests(void)

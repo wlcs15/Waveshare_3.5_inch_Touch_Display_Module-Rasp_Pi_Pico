@@ -1,6 +1,8 @@
 ---
-# Host gate for lib/quality + tests. Pico/newlib has no memset_s.
-Checks: 'clang-diagnostic-*,clang-analyzer-*,google-*,cert-*,-google-readability-todo'
+# Host gate: lib/quality + tests only.
+# Do not scan vendor lib/lcd, lib/fatfs, lib/font (Waveshare/ST).
+# google-* / cert-* are C++/CERT style; they drown C+Unity reports.
+Checks: 'clang-diagnostic-*,clang-analyzer-*'
 WarningsAsErrors: 'clang-diagnostic-error,clang-analyzer-*'
-HeaderFilterRegex: 'lib/quality|tests/'
+HeaderFilterRegex: 'lib/quality/|tests/'
 FormatStyle: none

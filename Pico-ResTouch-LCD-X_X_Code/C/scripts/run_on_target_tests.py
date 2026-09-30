@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import glob
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -53,6 +54,26 @@ def _cdc_port():
     return None
 
 
+def _openocd_reset():
+    """SWD reset via Raspberry Pi Debug Probe (CMSIS-DAP). USB CDC re-enumerates."""
+    openocd = shutil.which("openocd")
+    if not openocd:
+        print("openocd not on PATH; skip SWD reset")
+        return False
+    cmd = [
+        openocd,
+        "-f",
+        "interface/cmsis-dap.cfg",
+        "-f",
+        "target/rp2040.cfg",
+        "-c",
+        "adapter speed 5000; init; reset run; exit",
+    ]
+    print(" ".join(cmd))
+    rc = subprocess.call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return rc == 0
+
+
 def _read_serial(port, seconds, log_path):
     data = b""
     try:
@@ -60,7 +81,21 @@ def _read_serial(port, seconds, log_path):
     except ImportError:
         serial = None
     if serial is not None:
-        ser = serial.Serial(port, 115200, timeout=0.2)
+        ser = None
+        last_err = None
+        for _try in range(20):
+            try:
+                ser = serial.Serial(port, 115200, timeout=0.2)
+                break
+            except (OSError, serial.SerialException) as err:
+                last_err = err
+                time.sleep(0.25)
+                nxt = _cdc_port()
+                if nxt:
+                    port = nxt
+        if ser is None:
+            raise SystemExit("could not open CDC %s: %s" % (port, last_err))
+        ser.dtr = True
         deadline = time.time() + seconds
         while time.time() < deadline:
             chunk = ser.read(4096)
@@ -107,19 +142,22 @@ def main():
         print("missing %s" % uf2)
         return 1
     tool = _picotool()
-    subprocess.check_call([tool, "load", "-x", "-f", uf2])
-    port = _cdc_port()
+    subprocess.check_call([tool, "load", "-f", uf2])
     local = os.path.join(ROOT, "local")
     try:
         os.makedirs(local)
     except OSError:
         pass
     log_path = os.path.join(local, "on_target_tests-last.log")
+    print("SWD reset so Unity runs after CDC is open")
+    _openocd_reset()
+    time.sleep(1)
+    port = _cdc_port()
     if not port:
         print("no Pico CDC port; firmware flashed, open USB serial for Unity output")
         return 0
-    print("reading %s (20s)..." % port)
-    text = _read_serial(port, 12, log_path)
+    print("reading %s (15s)..." % port)
+    text = _read_serial(port, 15, log_path)
     if "FAIL:" in text:
         print("on-target Unity: FAIL (see %s)" % log_path)
         return 1
