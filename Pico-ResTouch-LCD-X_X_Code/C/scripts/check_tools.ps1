@@ -92,7 +92,7 @@ if ($py) {
 
 Write-Host ""
 Write-Host "=== On-target emulators (required) ==="
-Write-Host "  (skip Espressif QEMU / simavr — other CI bots)"
+Write-Host "  (skip Espressif QEMU / simavr - other CI bots)"
 function Resolve-Emu($n) {
     $g = Get-Command $n -ErrorAction SilentlyContinue
     if ($g) { return $g.Source }
