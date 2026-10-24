@@ -34,7 +34,8 @@ void bmp_policy_display_size(bmp_scan_dir_t scan, uint32_t *column, uint32_t *pa
 int bmp_policy_parse_header(const uint8_t *buf, size_t len, bmp_header_info_t *out);
 int bmp_policy_can_show(const bmp_header_info_t *info, uint32_t column, uint32_t page);
 int bmp_policy_is_bmp_ext(const char *name);
-void bmp_policy_pad_8_3(const char *name, char *out11);
+/* Writes 11 chars + NUL. Returns 0, or -1 if out is NULL or out_len < 12. */
+int bmp_policy_pad_8_3(const char *name, char *out, size_t out_len);
 
 #ifdef __cplusplus
 }

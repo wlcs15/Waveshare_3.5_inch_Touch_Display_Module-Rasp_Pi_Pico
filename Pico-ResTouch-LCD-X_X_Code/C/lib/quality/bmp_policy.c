@@ -80,7 +80,6 @@ int bmp_policy_can_show(const bmp_header_info_t *info, uint32_t column, uint32_t
 int bmp_policy_is_bmp_ext(const char *name)
 {
     const char *dot;
-    size_t i;
 
     if (name == NULL) {
         return 0;
@@ -89,38 +88,33 @@ int bmp_policy_is_bmp_ext(const char *name)
     if (dot == NULL || dot[1] == '\0') {
         return 0;
     }
-    if (dot[1] != 'B' || dot[2] != 'M' || dot[3] != 'P') {
+    if (dot[1] != 'B' || dot[2] != 'M' || dot[3] != 'P' || dot[4] != '\0') {
         return 0;
-    }
-    if (dot[4] != '\0') {
-        return 0;
-    }
-    for (i = 0; name + i < dot; i++) {
-        if (name[i] == '\0') {
-            return 0;
-        }
     }
     return 1;
 }
 
-void bmp_policy_pad_8_3(const char *name, char *out11)
+int bmp_policy_pad_8_3(const char *name, char *out, size_t out_len)
 {
     size_t n;
     size_t i;
 
-    if (out11 == NULL) {
-        return;
+    if (out == NULL || out_len < 12) {
+        return -1;
     }
-    (void)memset_s(out11, 12, ' ', 11);
-    out11[11] = '\0';
+    if (memset_s(out, out_len, ' ', 11) != 0) {
+        return -1;
+    }
+    out[11] = '\0';
     if (name == NULL) {
-        return;
+        return 0;
     }
     n = strlen(name);
     if (n > 11) {
         n = 11;
     }
     for (i = 0; i < n; i++) {
-        out11[i] = name[i];
+        out[i] = name[i];
     }
+    return 0;
 }
